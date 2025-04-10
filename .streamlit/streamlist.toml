@@ -1,0 +1,11 @@
+# .streamlit/secrets.toml
+gemini_api_key = "YOUR_GEMINI_API_KEY"
+doc_id = "YOUR_GOOGLE_DOC_ID"
+gdoc_key_json = """{
+  "type": "service_account",
+  "project_id": "...",
+  "private_key_id": "...",
+  "private_key": "-----BEGIN PRIVATE KEY-----\n...\n-----END PRIVATE KEY-----\n",
+  "client_email": "...@....iam.gserviceaccount.com",
+  ...
+}"""
