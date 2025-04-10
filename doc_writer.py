@@ -106,9 +106,8 @@ def write_to_google_doc(text, typing_delay=1.0):
             }]}
         ).execute()
 
-        current_index += len(chunk) + 1
-        time.sleep(typing_delay)
-
+    except Exception as e:
+        raise Exception(f"Error writing to doc: {str(e)}")
 
 
 # ======================
