@@ -75,118 +75,39 @@ def generate_ai_response(prompt):
         raise Exception(f"Unexpected response format: {str(e)}")
 
 
-def write_to_google_doc(text):
+def write_to_google_doc(text, typing_delay=1.0):
     """
-    Parses and formats AI-generated text, then inserts it into a Google Doc
-    with basic formatting: bold, headings, and bullets.
+    Writes text to a Google Doc, simulating human-like typing.
+    
+    Args:
+        text (str): The text to insert
+        typing_delay (float): Delay between each chunk or word
     """
-    try:
-        # Authenticate
-        credentials = service_account.Credentials.from_service_account_file(
-            SERVICE_ACCOUNT_FILE,
-            scopes=SCOPES
-        )
-        docs_service = build("docs", "v1", credentials=credentials)
+    import time
+    from google.oauth2 import service_account
+    from googleapiclient.discovery import build
 
-        # Break text into lines
-        lines = text.split('\n')
-        requests = []
-        index = 1
+    creds = service_account.Credentials.from_service_account_info(
+        SERVICE_ACCOUNT_INFO, scopes=SCOPES
+    )
+    docs_service = build("docs", "v1", credentials=creds)
 
-        for line in lines:
-            stripped = line.strip()
+    current_index = 1
+    chunks = [' '.join(text.split()[i:i+10]) for i in range(0, len(text.split()), 10)]
 
-            if not stripped:
-                # Add line break
-                requests.append({
-                    "insertText": {
-                        "location": {"index": index},
-                        "text": "\n"
-                    }
-                })
-                index += 1
-                continue
-
-            # Headings (Markdown-style with **title**)
-            if stripped.startswith("**") and stripped.endswith("**"):
-                clean = stripped.strip("**")
-                requests.append({
-                    "insertText": {
-                        "location": {"index": index},
-                        "text": clean + "\n"
-                    }
-                })
-                requests.append({
-                    "updateParagraphStyle": {
-                        "range": {
-                            "startIndex": index,
-                            "endIndex": index + len(clean)
-                        },
-                        "paragraphStyle": {"namedStyleType": "HEADING_2"},
-                        "fields": "namedStyleType"
-                    }
-                })
-                index += len(clean) + 1
-
-            # Bullet points
-            elif stripped.startswith("* ") or stripped.startswith("- "):
-                text_only = stripped[2:].strip()
-                requests.append({
-                    "insertText": {
-                        "location": {"index": index},
-                        "text": text_only + "\n"
-                    }
-                })
-                requests.append({
-                    "createParagraphBullets": {
-                        "range": {
-                            "startIndex": index,
-                            "endIndex": index + len(text_only)
-                        },
-                        "bulletPreset": "BULLET_DISC_CIRCLE_SQUARE"
-                    }
-                })
-                index += len(text_only) + 1
-
-            # Bold inline (e.g. **word**)
-            elif "**" in stripped:
-                segments = stripped.split("**")
-                formatted = ""
-                for i, part in enumerate(segments):
-                    if i % 2 == 0:
-                        formatted += part
-                    else:
-                        formatted += f"<b>{part}</b>"
-
-                # Just insert as normal text for now (bold will be removed; optional enhancement)
-                cleaned = stripped.replace("**", "")
-                requests.append({
-                    "insertText": {
-                        "location": {"index": index},
-                        "text": cleaned + "\n"
-                    }
-                })
-                index += len(cleaned) + 1
-
-            # Normal paragraph
-            else:
-                requests.append({
-                    "insertText": {
-                        "location": {"index": index},
-                        "text": stripped + "\n"
-                    }
-                })
-                index += len(stripped) + 1
-
-        # Send all formatting requests in batch
+    for chunk in chunks:
         docs_service.documents().batchUpdate(
             documentId=DOC_ID,
-            body={"requests": requests}
+            body={"requests": [{
+                "insertText": {
+                    "location": {"index": current_index},
+                    "text": chunk + " "
+                }
+            }]}
         ).execute()
 
-    except Exception as e:
-        raise Exception(f"Error writing to doc: {str(e)}")
-
+        current_index += len(chunk) + 1
+        time.sleep(typing_delay)
 
 # ======================
 # MAIN EXECUTION
